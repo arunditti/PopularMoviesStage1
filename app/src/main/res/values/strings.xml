@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">Popular Movies Stage1</string>
+    <string name="label_movie_title">Movie Title</string>
+    <string name="label_release_date">Release Date</string>
+    <string name="label_rating">Rating</string>
+    <string name="label_overview">Overview</string>
+
+    <string name="error_message">An error has occured. Please try again by clicking REFRESH</string>
+
+    <string name="pref_sort_by_default">popularity.desc</string>
+    <string name="pref_sort_by_key" translatable="false">sort_by</string>
+
+</resources>
