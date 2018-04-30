@@ -1,13 +1,14 @@
 package com.arunditti.android.popularmoviesstage1.ui;
 
+import android.support.v4.app.LoaderManager.LoaderCallbacks;
+import android.support.v4.content.AsyncTaskLoader;
+import android.support.v4.content.Loader;
 import android.content.Intent;
-import android.content.SharedPreferences;
-import android.os.AsyncTask;
-import android.preference.PreferenceManager;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.util.Log;
 import android.view.View;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -15,19 +16,27 @@ import android.widget.Toast;
 
 import com.arunditti.android.popularmoviesstage1.R;
 import com.arunditti.android.popularmoviesstage1.model.MovieItem;
+import com.arunditti.android.popularmoviesstage1.ui.MovieAdapter.MovieAdapterOnClickHandler;
 import com.arunditti.android.popularmoviesstage1.utils.JsonUtils;
 import com.arunditti.android.popularmoviesstage1.utils.NetworkUtils;
 
 import java.net.URL;
 import java.util.ArrayList;
 
-public class MainActivity extends AppCompatActivity implements MovieAdapter.MovieAdapterOnClickHandler {
+public class MainActivity extends AppCompatActivity implements MovieAdapterOnClickHandler,
+        LoaderCallbacks<ArrayList<MovieItem>> {
+
+    private static final String LOG_TAG = MainActivity.class.getSimpleName();
+    //Constant to uniquely identify loader
+    private static final int MOVIE_LOADER_ID = 11;
 
     private MovieAdapter mAdapter;
     RecyclerView mRecyclerView;
     private TextView mErrorMessageDisplay;
     private Toast mToast;
     private ProgressBar mLoadingIndicator;
+
+    ArrayList<MovieItem> mMovieItems = new ArrayList<MovieItem>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,26 +61,22 @@ public class MainActivity extends AppCompatActivity implements MovieAdapter.Movi
         mRecyclerView.setAdapter(mAdapter);
 
         mLoadingIndicator = (ProgressBar) findViewById(R.id.pb_loading_indicator);
+
+        int loaderId = MOVIE_LOADER_ID;
+
+        //LoaderCallbacks<ArrayList<MovieItem>> callback = MainActivity.this;
+        Bundle bundleForLoader = null;
+
+        LoaderCallbacks<ArrayList<MovieItem>> callbacks = MainActivity.this;
+
+        //Ensure a loader is initialized and active. If the loader doesn't already exist, one is created and starts the loader. Othe
+        getSupportLoaderManager().initLoader(loaderId, bundleForLoader, callbacks);
     }
 
-    public void updateMovieList() {
-        FetchPopularMoviesTask movieTask = new FetchPopularMoviesTask();
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-        String sort_by = prefs.getString(getString(R.string.pref_sort_by_key),
-                getString(R.string.pref_sort_by_default));
-        movieTask.execute(sort_by);
-    }
-
-    @Override
-    public void onStart() {
-        super.onStart();
-        updateMovieList();
-    }
-
-    private void showWeatherDataView() {
+    private void showMovieDataView() {
         /* First, make sure the error is invisible */
         mErrorMessageDisplay.setVisibility(View.INVISIBLE);
-        /* Then, make sure the weather data is visible */
+        /* Then, make sure the movie data is visible */
         mRecyclerView.setVisibility(View.VISIBLE);
     }
 
@@ -90,39 +95,59 @@ public class MainActivity extends AppCompatActivity implements MovieAdapter.Movi
         startActivity(intentToStartDetailActivity);
     }
 
+    @Override
+    public Loader<ArrayList<MovieItem>> onCreateLoader(int id, final Bundle args) {
+        Log.i(LOG_TAG, "onCreateLoader is called");
 
-    public class FetchPopularMoviesTask extends AsyncTask<String, Void, ArrayList<MovieItem>> {
+        return new AsyncTaskLoader<ArrayList<MovieItem>>(this) {
 
-        @Override
-        protected void onPreExecute() {
-            super.onPreExecute();
-            mLoadingIndicator.setVisibility(View.VISIBLE);
-        }
+            ArrayList<MovieItem> mMovieData = null;
 
-        @Override
-        protected ArrayList<MovieItem> doInBackground(String... params) {
-
-            URL weatherRequestUrl = NetworkUtils.buildUrl();
-
-            try {
-                String jsonWeatherResponse = NetworkUtils.getResponseFromHttpUrl(weatherRequestUrl);
-                ArrayList<MovieItem> simpleJsonWeatherData = JsonUtils.getPopularMoviesDataFromJson(MainActivity.this, jsonWeatherResponse);
-                return simpleJsonWeatherData;
-            } catch (Exception e) {
-                e.printStackTrace();
-                return null;
+            @Override
+            protected void onStartLoading() {
+                if(mMovieData != null) {
+                    deliverResult(mMovieData);
+                } else {
+                    mLoadingIndicator.setVisibility(View.VISIBLE);
+                    forceLoad();
+                }
             }
-        }
 
-        @Override
-        protected void onPostExecute(ArrayList<MovieItem> result) {
-            mLoadingIndicator.setVisibility(View.INVISIBLE);
-            if (result != null) {
-                showWeatherDataView();
-                mAdapter.updateMovieList(result);
-            } else {
-                showErrorMessage();
+            @Override
+            public ArrayList<MovieItem> loadInBackground() {
+
+                URL MovieRequestUrl = NetworkUtils.buildUrl();
+
+                try {
+                    String jsonMovieResponse = NetworkUtils.getResponseFromHttpUrl(MovieRequestUrl);
+                    ArrayList<MovieItem> simpleJsonMovieData = JsonUtils.getPopularMoviesDataFromJson(MainActivity.this, jsonMovieResponse);
+                    return simpleJsonMovieData;
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    return null;
+                }
             }
+
+            public void deliverResult(ArrayList<MovieItem> data) {
+                mMovieData = data;
+                super.deliverResult(data);
+            }
+        };
+    }
+
+    @Override
+    public void onLoadFinished(Loader<ArrayList<MovieItem>> loader, ArrayList<MovieItem> data) {
+        mLoadingIndicator.setVisibility(View.INVISIBLE);
+        if (data != null) {
+            showMovieDataView();
+            mAdapter.updateMovieList(data);
+        } else {
+            showErrorMessage();
         }
+    }
+
+    @Override
+    public void onLoaderReset(Loader<ArrayList<MovieItem>> loader) {
+
     }
 }
