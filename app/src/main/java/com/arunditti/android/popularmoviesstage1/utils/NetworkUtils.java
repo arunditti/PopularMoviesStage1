@@ -27,8 +27,9 @@ public class NetworkUtils {
     private static final String format = "json";
 
     //Build the URL
-    public static URL buildUrl() {
+    public static URL buildUrl(String movieQuery) {
         Uri builtUri = Uri.parse(MOVIE_BASE_URL).buildUpon()
+                .appendQueryParameter(SORT_BY, movieQuery)
                 .appendQueryParameter(API_KEY, BuildConfig.PICASSO_API_KEY)
                 .build();
         URL url = null;

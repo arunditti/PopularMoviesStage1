@@ -2,7 +2,6 @@ package com.arunditti.android.popularmoviesstage1.utils;
 
 import com.arunditti.android.popularmoviesstage1.model.MovieItem;
 import com.arunditti.android.popularmoviesstage1.ui.MainActivity;
-import com.arunditti.android.popularmoviesstage1.ui.MovieAdapter;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -16,8 +15,6 @@ import java.util.ArrayList;
 
 public class JsonUtils {
     private final String LOG_TAG = JsonUtils.class.getSimpleName();
-
-    private MovieAdapter mMovieAdapter;
 
     public static ArrayList<MovieItem> getPopularMoviesDataFromJson(MainActivity mainActivity, String PopularMoviesJsonStr)
             throws JSONException {

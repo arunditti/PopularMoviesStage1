@@ -1,14 +1,19 @@
 package com.arunditti.android.popularmoviesstage1.ui;
 
+import android.content.SharedPreferences;
 import android.support.v4.app.LoaderManager.LoaderCallbacks;
 import android.support.v4.content.AsyncTaskLoader;
 import android.support.v4.content.Loader;
 import android.content.Intent;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.preference.PreferenceManager;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -18,13 +23,15 @@ import com.arunditti.android.popularmoviesstage1.R;
 import com.arunditti.android.popularmoviesstage1.model.MovieItem;
 import com.arunditti.android.popularmoviesstage1.ui.MovieAdapter.MovieAdapterOnClickHandler;
 import com.arunditti.android.popularmoviesstage1.utils.JsonUtils;
+import com.arunditti.android.popularmoviesstage1.utils.MoviePreferences;
 import com.arunditti.android.popularmoviesstage1.utils.NetworkUtils;
 
 import java.net.URL;
 import java.util.ArrayList;
 
 public class MainActivity extends AppCompatActivity implements MovieAdapterOnClickHandler,
-        LoaderCallbacks<ArrayList<MovieItem>> {
+        LoaderCallbacks<ArrayList<MovieItem>>,
+        SharedPreferences.OnSharedPreferenceChangeListener {
 
     private static final String LOG_TAG = MainActivity.class.getSimpleName();
     //Constant to uniquely identify loader
@@ -35,6 +42,8 @@ public class MainActivity extends AppCompatActivity implements MovieAdapterOnCli
     private TextView mErrorMessageDisplay;
     private Toast mToast;
     private ProgressBar mLoadingIndicator;
+
+    private static boolean PREFERENCES_HAVE_BEEN_UPDATED = false;
 
     ArrayList<MovieItem> mMovieItems = new ArrayList<MovieItem>();
 
@@ -51,11 +60,7 @@ public class MainActivity extends AppCompatActivity implements MovieAdapterOnCli
         GridLayoutManager mGridLayoutManager = new GridLayoutManager(MainActivity.this, 2);
         mRecyclerView.setLayoutManager(mGridLayoutManager);
 
-        //Create a fake list of movies
-        ArrayList<MovieItem> movieItems = new ArrayList<MovieItem>();
-
-
-        mAdapter = new MovieAdapter(this, MainActivity.this, movieItems);
+        mAdapter = new MovieAdapter(this, MainActivity.this, mMovieItems);
 
         //Link the adapter to the RecyclerView
         mRecyclerView.setAdapter(mAdapter);
@@ -71,29 +76,12 @@ public class MainActivity extends AppCompatActivity implements MovieAdapterOnCli
 
         //Ensure a loader is initialized and active. If the loader doesn't already exist, one is created and starts the loader. Othe
         getSupportLoaderManager().initLoader(loaderId, bundleForLoader, callbacks);
+
+        //Register MainActivity as an OnPreferenceChangedListener
+        PreferenceManager.getDefaultSharedPreferences(this)
+                .registerOnSharedPreferenceChangeListener(this);
     }
 
-    private void showMovieDataView() {
-        /* First, make sure the error is invisible */
-        mErrorMessageDisplay.setVisibility(View.INVISIBLE);
-        /* Then, make sure the movie data is visible */
-        mRecyclerView.setVisibility(View.VISIBLE);
-    }
-
-    private void showErrorMessage() {
-        /* First, hide the currently visible data */
-        mRecyclerView.setVisibility(View.INVISIBLE);
-        /* Then, show the error */
-        mErrorMessageDisplay.setVisibility(View.VISIBLE);
-    }
-
-    @Override
-    public void onClick(MovieItem movieClicked) {
-
-        Intent intentToStartDetailActivity = new Intent(MainActivity.this, DetailActivity.class);
-        intentToStartDetailActivity.putExtra("MovieItem", movieClicked);
-        startActivity(intentToStartDetailActivity);
-    }
 
     @Override
     public Loader<ArrayList<MovieItem>> onCreateLoader(int id, final Bundle args) {
@@ -116,7 +104,9 @@ public class MainActivity extends AppCompatActivity implements MovieAdapterOnCli
             @Override
             public ArrayList<MovieItem> loadInBackground() {
 
-                URL MovieRequestUrl = NetworkUtils.buildUrl();
+                String movieQuery = MoviePreferences.getPreferredMovie(MainActivity.this);
+
+                URL MovieRequestUrl = NetworkUtils.buildUrl(movieQuery);
 
                 try {
                     String jsonMovieResponse = NetworkUtils.getResponseFromHttpUrl(MovieRequestUrl);
@@ -148,6 +138,70 @@ public class MainActivity extends AppCompatActivity implements MovieAdapterOnCli
 
     @Override
     public void onLoaderReset(Loader<ArrayList<MovieItem>> loader) {
+
+    }
+
+    private void showMovieDataView() {
+        /* First, make sure the error is invisible */
+        mErrorMessageDisplay.setVisibility(View.INVISIBLE);
+        /* Then, make sure the movie data is visible */
+        mRecyclerView.setVisibility(View.VISIBLE);
+    }
+
+    private void showErrorMessage() {
+        /* First, hide the currently visible data */
+        mRecyclerView.setVisibility(View.INVISIBLE);
+        /* Then, show the error */
+        mErrorMessageDisplay.setVisibility(View.VISIBLE);
+    }
+
+    @Override
+    public void onClick(MovieItem movieClicked) {
+
+        Intent intentToStartDetailActivity = new Intent(MainActivity.this, DetailActivity.class);
+        intentToStartDetailActivity.putExtra("MovieItem", movieClicked);
+        startActivity(intentToStartDetailActivity);
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.menu_main, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        int id = item.getItemId();
+        if(id == R.id.action_settings) {
+            Intent startSettingsActivity = new Intent(this, SettingsActivity.class);
+            startActivity(startSettingsActivity);
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        if(PREFERENCES_HAVE_BEEN_UPDATED) {
+            Log.d(LOG_TAG, "onStart: Preferences were updated");
+            getSupportLoaderManager().restartLoader(MOVIE_LOADER_ID, null, this);
+            PREFERENCES_HAVE_BEEN_UPDATED = false;
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        PreferenceManager.getDefaultSharedPreferences(this)
+                .unregisterOnSharedPreferenceChangeListener(this);
+    }
+
+    @Override
+    public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
+        Log.d(LOG_TAG, "Preferences are updated");
+        PREFERENCES_HAVE_BEEN_UPDATED = true;
 
     }
 }
