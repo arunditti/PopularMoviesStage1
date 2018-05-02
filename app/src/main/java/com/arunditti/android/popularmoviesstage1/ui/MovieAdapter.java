@@ -1,6 +1,7 @@
 package com.arunditti.android.popularmoviesstage1.ui;
 
 import android.content.Context;
+import android.support.v7.widget.CardView;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -49,6 +50,7 @@ public class MovieAdapter extends RecyclerView.Adapter<MovieAdapter.MovieAdapter
     @Override
     public void onBindViewHolder(final MovieAdapterViewHolder holder, int position) {
 
+                holder.movieName.setText(mMovieItems.get(position).mMovieTitle);
         Picasso.with(mContext)
                 .load(mMovieItems
                         .get(position).mImagePath)
@@ -65,11 +67,13 @@ public class MovieAdapter extends RecyclerView.Adapter<MovieAdapter.MovieAdapter
 
     //Create a class within MovieAdapter  called MovieAdapterViewHolder
     public class MovieAdapterViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener {
+                CardView cardView;
         ImageView moviePoster;
         TextView movieName;
 
         public MovieAdapterViewHolder(View itemView) {
             super(itemView);
+            cardView = (CardView)itemView.findViewById(R.id.cv) ;
 
             moviePoster = itemView.findViewById(R.id.movie_poster);
             movieName = itemView.findViewById(R.id.movie_name);
